@@ -1,0 +1,925 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Rail in the Air 3D - เกมรถรางลอยฟ้า (รางยาวพิเศษ)</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+            -webkit-user-select: none;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body, html {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #38bdf8;
+        }
+
+        #game-container {
+            width: 100%;
+            height: 100%;
+            position: relative;
+        }
+
+        canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        /* Overlay & UI Elements */
+        .ui-panel {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 20px;
+        }
+
+        /* Top HUD Bar */
+        .top-hud {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            max-width: 800px;
+            margin: 0 auto;
+            background: rgba(15, 23, 42, 0.65);
+            backdrop-filter: blur(10px);
+            padding: 12px 24px;
+            border-radius: 20px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+        }
+
+        .hud-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #ffffff;
+            font-size: 22px;
+            font-weight: 800;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.6);
+        }
+
+        .hud-icon {
+            font-size: 26px;
+        }
+
+        /* Progress Bar */
+        .progress-box {
+            flex-grow: 1;
+            margin: 0 20px;
+            background: rgba(0,0,0,0.5);
+            height: 22px;
+            border-radius: 12px;
+            overflow: hidden;
+            border: 2px solid #fff;
+            position: relative;
+        }
+
+        .progress-bar {
+            width: 0%;
+            height: 100%;
+            background: linear-gradient(90deg, #facc15, #f97316);
+            transition: width 0.1s linear;
+        }
+
+        .flag-icon {
+            position: absolute;
+            right: 6px;
+            top: -1px;
+            font-size: 14px;
+        }
+
+        /* Speedometer Overlay & Warnings */
+        .speed-gauge {
+            position: absolute;
+            top: 90px;
+            right: 20px;
+            background: rgba(15, 23, 42, 0.8);
+            color: #fff;
+            padding: 12px 20px;
+            border-radius: 16px;
+            font-size: 28px;
+            font-weight: bold;
+            border: 3px solid #38bdf8;
+            box-shadow: 0 0 15px rgba(56, 189, 248, 0.4);
+            text-align: right;
+        }
+
+        .warning-badge {
+            position: absolute;
+            top: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #ef4444;
+            color: white;
+            padding: 10px 24px;
+            border-radius: 30px;
+            font-size: 20px;
+            font-weight: 900;
+            letter-spacing: 1px;
+            box-shadow: 0 0 20px rgba(239, 68, 68, 0.8);
+            animation: pulse 0.5s infinite alternate;
+        }
+
+        @keyframes pulse {
+            from { transform: translateX(-50%) scale(1); }
+            to { transform: translateX(-50%) scale(1.1); }
+        }
+
+        /* Control Buttons Container (Left side controls) */
+        .controls-container {
+            position: absolute;
+            left: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            pointer-events: auto;
+        }
+
+        .ctrl-btn {
+            width: 95px;
+            height: 115px;
+            border-radius: 20px;
+            border: 4px solid #ffffff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 45px;
+            color: white;
+            cursor: pointer;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+            transition: transform 0.1s, filter 0.1s;
+        }
+
+        .ctrl-btn:active, .ctrl-btn.active {
+            transform: scale(0.92);
+            filter: brightness(1.25);
+        }
+
+        .btn-up {
+            background: linear-gradient(180deg, #22c55e, #15803d);
+        }
+
+        .btn-down {
+            background: linear-gradient(180deg, #ef4444, #b91c1c);
+        }
+
+        /* Menus & Dialogs */
+        .modal {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(15, 23, 42, 0.82);
+            backdrop-filter: blur(12px);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            pointer-events: auto;
+        }
+
+        .modal-card {
+            background: linear-gradient(135deg, #1e293b, #0f172a);
+            border: 3px solid #38bdf8;
+            border-radius: 28px;
+            padding: 32px;
+            width: 90%;
+            max-width: 560px;
+            color: white;
+            text-align: center;
+            box-shadow: 0 25px 60px rgba(0,0,0,0.6);
+            animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        @keyframes popIn {
+            from { transform: scale(0.8); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+
+        .modal-title {
+            font-size: 38px;
+            font-weight: 900;
+            margin-bottom: 12px;
+            background: linear-gradient(90deg, #38bdf8, #818cf8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 2px 12px rgba(56, 189, 248, 0.3);
+        }
+
+        .stars-container {
+            font-size: 45px;
+            margin: 10px 0;
+            letter-spacing: 5px;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #38bdf8, #0284c7);
+            border: none;
+            color: white;
+            padding: 14px 30px;
+            font-size: 20px;
+            font-weight: bold;
+            border-radius: 50px;
+            cursor: pointer;
+            margin: 8px;
+            box-shadow: 0 6px 20px rgba(2, 132, 199, 0.4);
+            transition: all 0.2s ease;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(2, 132, 199, 0.6);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #64748b, #475569);
+            box-shadow: 0 6px 20px rgba(71, 85, 105, 0.4);
+        }
+
+        /* Shop System Styles */
+        .shop-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+            max-height: 280px;
+            overflow-y: auto;
+            padding: 5px;
+        }
+
+        .shop-item {
+            background: rgba(255,255,255,0.05);
+            border: 2px solid #334155;
+            border-radius: 16px;
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .shop-item:hover {
+            border-color: #38bdf8;
+            background: rgba(255,255,255,0.1);
+        }
+
+        .shop-item.selected {
+            border-color: #22c55e;
+            background: rgba(34, 197, 94, 0.2);
+        }
+
+        .shop-preview {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 30px;
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
+        }
+
+        .shop-item-name {
+            font-size: 14px;
+            font-weight: bold;
+            margin-bottom: 4px;
+        }
+
+        .shop-item-price {
+            font-size: 13px;
+            color: #facc15;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        /* How to Play Box */
+        .instructions-list {
+            text-align: left;
+            margin: 20px 0;
+            line-height: 1.8;
+            font-size: 16px;
+            background: rgba(0,0,0,0.25);
+            padding: 16px 20px;
+            border-radius: 14px;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+    </style>
+
+    <!-- Three.js Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+</head>
+<body>
+
+    <div id="game-container">
+        <!-- UI Overlay -->
+        <div class="ui-panel">
+            <div class="top-hud">
+                <div class="hud-item">
+                    <span class="hud-icon">⏱️</span>
+                    <span id="timer-display">00:00</span>
+                </div>
+
+                <div class="progress-box">
+                    <div id="progress-bar" class="progress-bar"></div>
+                    <span class="flag-icon">🏁</span>
+                </div>
+
+                <div class="hud-item">
+                    <span class="hud-icon">🪙</span>
+                    <span id="coin-display">0</span>
+                </div>
+            </div>
+
+            <div id="warning-badge" class="warning-badge hidden">⚠️ โค้งอันตราย! ลดความเร็ว!</div>
+
+            <div class="speed-gauge">
+                <span id="speed-display">0</span> <small style="font-size: 14px">KM/H</small>
+            </div>
+
+            <!-- On-screen Speed Control Buttons -->
+            <div class="controls-container">
+                <div id="btn-up" class="ctrl-btn btn-up">▲</div>
+                <div id="btn-down" class="ctrl-btn btn-down">▼</div>
+            </div>
+        </div>
+
+        <!-- Main Start Menu Modal -->
+        <div id="menu-modal" class="modal">
+            <div class="modal-card">
+                <h1 class="modal-title">RAIL IN THE AIR 3D</h1>
+                <p style="color: #94a3b8; margin-bottom: 20px;">ซิ่งรถรางลอยฟ้าสนามยาวพิเศษ! คุมความเร็วให้ดีก่อนตกราง</p>
+
+                <button id="start-btn" class="btn">🚀 เริ่มเล่นเกม</button>
+                <button id="shop-btn" class="btn btn-secondary">🛒 ร้านค้าตัวละคร</button>
+                <button id="how-btn" class="btn btn-secondary">❓ วิธีการเล่น</button>
+            </div>
+        </div>
+
+        <!-- Character & Cart Shop Modal -->
+        <div id="shop-modal" class="modal hidden">
+            <div class="modal-card">
+                <h2 class="modal-title">ร้านค้าตัวละคร & รถราง</h2>
+                <div style="font-size: 18px; color: #facc15; margin-bottom: 12px;">
+                    เหรียญของคุณ: <span id="shop-coins">0</span> 🪙
+                </div>
+
+                <div id="shop-grid" class="shop-grid">
+                    <!-- Dynamic Shop items -->
+                </div>
+
+                <button id="shop-close-btn" class="btn btn-secondary">ปิดร้านค้า</button>
+            </div>
+        </div>
+
+        <!-- How to Play Modal -->
+        <div id="how-modal" class="modal hidden">
+            <div class="modal-card">
+                <h2 class="modal-title">วิธีการเล่น</h2>
+                <div class="instructions-list">
+                    🟢 <b>เพิ่มความเร็ว:</b> กดปุ่ม <b>▲ (ลูกศรขึ้น)</b> หรือปุ่ม <b>W</b><br>
+                    🔴 <b>เบรก / ถอยหลัง:</b> กดปุ่ม <b>▼ (ลูกศรลง)</b> หรือปุ่ม <b>S</b><br>
+                    ⚠️ <b>คำเตือนทางโค้ง:</b> หากเข้าโค้งหักศอกด้วยความเร็วสูง รถรางจะ **ตกราง (แพ้)** ทันที!<br>
+                    🏁 <b>การชนะ:</b> ประคองรถรางวิ่งไปจนถึงปลายทางเข้าสู่เส้นชัย!<br>
+                    🪙 <b>เก็บเหรียญ:</b> สะสมเหรียญระหว่างทางเพื่อนำไปซื้อตัวละครและรถรางใหม่
+                </div>
+                <button id="how-close-btn" class="btn">เข้าใจแล้ว!</button>
+            </div>
+        </div>
+
+        <!-- Game Over / Victory Modal -->
+        <div id="gameover-modal" class="modal hidden">
+            <div class="modal-card">
+                <h2 id="gameover-title" class="modal-title">ผลการแข่งขัน</h2>
+                
+                <div id="stars-display" class="stars-container hidden">⭐⭐⭐</div>
+                
+                <p id="gameover-desc" style="margin: 15px 0; font-size: 18px; color: #cbd5e1;"></p>
+                
+                <div style="margin: 20px 0; background: rgba(0,0,0,0.3); padding: 16px; border-radius: 16px; text-align: left;">
+                    <p style="font-size: 17px; margin-bottom: 8px;">🪙 เหรียญที่สะสมได้: <b id="end-coins" style="color: #facc15;">0</b></p>
+                    <p style="font-size: 17px;">⏱️ เวลาที่ใช้ทั้งหมด: <b id="end-time" style="color: #38bdf8;">00:00</b></p>
+                </div>
+
+                <button id="restart-btn" class="btn">🔄 เล่นอีกครั้ง</button>
+                <button id="exit-btn" class="btn btn-secondary">🏠 หน้าหลัก</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- GAME DATA & CONFIGURATION ---
+        const SHOP_ITEMS = [
+            { id: 'default', name: 'นักสำรวจคลาสสิก', cartColor: 0x8B4513, shirtColor: 0xff4444, hairColor: 0x4a2e00, price: 0, unlocked: true },
+            { id: 'neon', name: 'นีออนไซเบอร์', cartColor: 0x00f0ff, shirtColor: 0xff00ff, hairColor: 0x00ffff, price: 40, unlocked: false },
+            { id: 'gold', name: 'รถรางทองคำ', cartColor: 0xFFD700, shirtColor: 0xffffff, hairColor: 0x333333, price: 80, unlocked: false },
+            { id: 'lava', name: 'ลาวาปีศาจ', cartColor: 0x800000, shirtColor: 0xff6600, hairColor: 0xcc0000, price: 120, unlocked: false }
+        ];
+
+        let state = {
+            coins: 50,
+            selectedSkin: 'default',
+            speed: 0,
+            maxSpeed: 0.0016, // Smoother top speed for long track
+            acceleration: 0.000022,
+            deceleration: 0.000015,
+            progress: 0,
+            timeElapsed: 0,
+            isPlaying: false,
+            isDerailing: false,
+            keyUp: false,
+            keyDown: false
+        };
+
+        // --- THREE.JS GLOBALS ---
+        let scene, camera, renderer;
+        let railCurve, trackGroup, cartGroup, characterGroup;
+        let coinsArray = [];
+        let timerInterval;
+
+        // --- INIT THREE.JS ENGINE ---
+        function initEngine() {
+            const container = document.getElementById('game-container');
+            
+            // Scene Setup
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x38bdf8);
+            scene.fog = new THREE.FogExp2(0x38bdf8, 0.004);
+
+            // Camera
+            camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1200);
+
+            // Renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.shadowMap.enabled = true;
+            container.appendChild(renderer.domElement);
+
+            // Lights
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.65);
+            scene.add(ambientLight);
+
+            const sunLight = new THREE.DirectionalLight(0xffffff, 0.85);
+            sunLight.position.set(150, 250, 150);
+            sunLight.castShadow = true;
+            sunLight.shadow.mapSize.width = 2048;
+            sunLight.shadow.mapSize.height = 2048;
+            scene.add(sunLight);
+
+            // Generate Track & World
+            createLongTrack();
+            createEnvironment();
+            createPlayerCart();
+
+            // Window Resize Listener
+            window.addEventListener('resize', onWindowResize);
+        }
+
+        // --- CREATE EXTENDED LONG 3D TRACK ---
+        function createLongTrack() {
+            const points = [];
+            const numPoints = 180; // Extended length!
+
+            for (let i = 0; i <= numPoints; i++) {
+                const t = i / numPoints;
+                const angle = t * Math.PI * 18; // Multiple spiraling loops
+                
+                // Varied radius and height for complex course
+                const radius = 80 + Math.sin(t * Math.PI * 8) * 45 + Math.cos(t * Math.PI * 3) * 20;
+                const x = Math.cos(angle) * radius;
+                const z = Math.sin(angle) * radius;
+                const y = Math.sin(t * Math.PI * 12) * 35 + (t * 180); // Climbing track
+
+                points.push(new THREE.Vector3(x, y, z));
+            }
+
+            railCurve = new THREE.CatmullRomCurve3(points);
+            railCurve.closed = false;
+
+            // Generate Track Mesh Elements
+            trackGroup = new THREE.Group();
+            const curvePoints = railCurve.getPoints(800);
+
+            // Steel Rails
+            const railGeo = new THREE.TubeGeometry(railCurve, 800, 0.18, 8, false);
+            const railMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8, metalness: 0.8, roughness: 0.2 });
+            
+            const railMesh = new THREE.Mesh(railGeo, railMat);
+            railMesh.position.y += 0.2;
+            trackGroup.add(railMesh);
+
+            // Wooden Planks & Collectible Coins
+            for (let i = 0; i < curvePoints.length - 1; i += 2) {
+                const pt = curvePoints[i];
+                const nextPt = curvePoints[i + 1];
+
+                const plankGeo = new THREE.BoxGeometry(2.4, 0.15, 0.45);
+                const plankMat = new THREE.MeshStandardMaterial({ color: 0x5c3a21 });
+                const plank = new THREE.Mesh(plankGeo, plankMat);
+                plank.position.copy(pt);
+                plank.lookAt(nextPt);
+                trackGroup.add(plank);
+
+                // Spawn Coins along the extended track
+                if (i % 12 === 0 && i > 15 && i < curvePoints.length - 30) {
+                    createCoin(pt);
+                }
+            }
+
+            scene.add(trackGroup);
+        }
+
+        // --- SPAWN COINS ---
+        function createCoin(pos) {
+            const coinGeo = new THREE.CylinderGeometry(0.7, 0.7, 0.18, 16);
+            const coinMat = new THREE.MeshStandardMaterial({ color: 0xFFD700, metalness: 0.9, roughness: 0.1 });
+            const coin = new THREE.Mesh(coinGeo, coinMat);
+            
+            coin.position.copy(pos).add(new THREE.Vector3(0, 1.4, 0));
+            coin.rotation.x = Math.PI / 2;
+            coin.castShadow = true;
+            
+            scene.add(coin);
+            coinsArray.push({ mesh: coin, collected: false });
+        }
+
+        // --- SCENERY & ENVIRONMENT ---
+        function createEnvironment() {
+            const islandGeo = new THREE.DodecahedronGeometry(6, 1);
+            const islandMat = new THREE.MeshStandardMaterial({ color: 0x22c55e, flatShading: true });
+
+            for (let i = 0; i < 70; i++) {
+                const island = new THREE.Mesh(islandGeo, islandMat);
+                island.position.set(
+                    (Math.random() - 0.5) * 500,
+                    (Math.random() - 0.5) * 250 + 50,
+                    (Math.random() - 0.5) * 500
+                );
+                const scale = Math.random() * 3 + 1;
+                island.scale.set(scale, scale, scale);
+                scene.add(island);
+            }
+        }
+
+        // --- PLAYER CART CREATION ---
+        function createPlayerCart() {
+            cartGroup = new THREE.Group();
+
+            const skin = SHOP_ITEMS.find(s => s.id === state.selectedSkin);
+
+            // Cart Base
+            const cartGeo = new THREE.BoxGeometry(1.8, 1.2, 2.5);
+            const cartMat = new THREE.MeshStandardMaterial({ color: skin.cartColor, roughness: 0.4 });
+            const cartMesh = new THREE.Mesh(cartGeo, cartMat);
+            cartMesh.position.y = 0.7;
+            cartMesh.castShadow = true;
+            cartGroup.add(cartMesh);
+
+            // Wheels
+            const wheelGeo = new THREE.CylinderGeometry(0.3, 0.3, 0.2, 12);
+            const wheelMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.8 });
+            
+            const wheelPositions = [
+                [-0.9, 0.2, 0.8], [0.9, 0.2, 0.8],
+                [-0.9, 0.2, -0.8], [0.9, 0.2, -0.8]
+            ];
+
+            wheelPositions.forEach(p => {
+                const wheel = new THREE.Mesh(wheelGeo, wheelMat);
+                wheel.rotation.z = Math.PI / 2;
+                wheel.position.set(...p);
+                cartGroup.add(wheel);
+            });
+
+            // Character
+            characterGroup = new THREE.Group();
+            
+            // Body
+            const bodyGeo = new THREE.BoxGeometry(0.8, 0.9, 0.5);
+            const bodyMat = new THREE.MeshStandardMaterial({ color: skin.shirtColor });
+            const body = new THREE.Mesh(bodyGeo, bodyMat);
+            body.position.set(0, 1.2, 0);
+            characterGroup.add(body);
+
+            // Head
+            const headGeo = new THREE.BoxGeometry(0.6, 0.6, 0.6);
+            const headMat = new THREE.MeshStandardMaterial({ color: 0xffdbac });
+            const head = new THREE.Mesh(headGeo, headMat);
+            head.position.set(0, 1.9, 0);
+            characterGroup.add(head);
+
+            // Hair
+            const hairGeo = new THREE.BoxGeometry(0.65, 0.2, 0.65);
+            const hairMat = new THREE.MeshStandardMaterial({ color: skin.hairColor });
+            const hair = new THREE.Mesh(hairGeo, hairMat);
+            hair.position.set(0, 2.2, 0);
+            characterGroup.add(hair);
+
+            cartGroup.add(characterGroup);
+            scene.add(cartGroup);
+        }
+
+        function updatePlayerSkin() {
+            if (cartGroup) scene.remove(cartGroup);
+            createPlayerCart();
+        }
+
+        // --- CONTROLS BINDING ---
+        function setupControls() {
+            // Keyboard Listener
+            window.addEventListener('keydown', (e) => {
+                if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') state.keyUp = true;
+                if (e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') state.keyDown = true;
+            });
+
+            window.addEventListener('keyup', (e) => {
+                if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') state.keyUp = false;
+                if (e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') state.keyDown = false;
+            });
+
+            // Touch & Mouse Buttons
+            const btnUp = document.getElementById('btn-up');
+            const btnDown = document.getElementById('btn-down');
+
+            const bindBtn = (btn, keyProp) => {
+                btn.addEventListener('touchstart', (e) => { e.preventDefault(); state[keyProp] = true; btn.classList.add('active'); });
+                btn.addEventListener('touchend', (e) => { e.preventDefault(); state[keyProp] = false; btn.classList.remove('active'); });
+                btn.addEventListener('mousedown', () => { state[keyProp] = true; btn.classList.add('active'); });
+                btn.addEventListener('mouseup', () => { state[keyProp] = false; btn.classList.remove('active'); });
+            };
+
+            bindBtn(btnUp, 'keyUp');
+            bindBtn(btnDown, 'keyDown');
+
+            // UI Navigation Events
+            document.getElementById('start-btn').addEventListener('click', startGame);
+            document.getElementById('shop-btn').addEventListener('click', openShop);
+            document.getElementById('shop-close-btn').addEventListener('click', closeShop);
+            document.getElementById('how-btn').addEventListener('click', () => document.getElementById('how-modal').classList.remove('hidden'));
+            document.getElementById('how-close-btn').addEventListener('click', () => document.getElementById('how-modal').classList.add('hidden'));
+            document.getElementById('restart-btn').addEventListener('click', startGame);
+            document.getElementById('exit-btn').addEventListener('click', showMainMenu);
+        }
+
+        // --- GAME LOOP & PHYSICS ---
+        function animate() {
+            requestAnimationFrame(animate);
+
+            if (state.isPlaying && !state.isDerailing) {
+                // Acceleration Controls
+                if (state.keyUp) {
+                    state.speed = Math.min(state.speed + state.acceleration, state.maxSpeed);
+                } else if (state.keyDown) {
+                    state.speed = Math.max(state.speed - state.acceleration * 1.6, -state.maxSpeed * 0.3);
+                } else {
+                    state.speed *= 0.985; // Slight Track Resistance
+                }
+
+                // Advance Progress
+                state.progress += state.speed;
+
+                // VICTORY CONDITION (Reached End)
+                if (state.progress >= 1) {
+                    state.progress = 1;
+                    triggerGameOver(true);
+                }
+
+                if (state.progress < 0) state.progress = 0;
+
+                // Update Cart Position along Curve
+                const currentPos = railCurve.getPointAt(state.progress);
+                const nextPos = railCurve.getPointAt(Math.min(state.progress + 0.0005, 1));
+                
+                cartGroup.position.copy(currentPos);
+                cartGroup.lookAt(nextPos);
+
+                // Calculate Curve Curvature for Derailment Risk
+                const prevPos = railCurve.getPointAt(Math.max(state.progress - 0.0005, 0));
+                const dir1 = new THREE.Vector3().subVectors(currentPos, prevPos).normalize();
+                const dir2 = new THREE.Vector3().subVectors(nextPos, currentPos).normalize();
+                const curvature = dir1.angleTo(dir2);
+
+                const warningBadge = document.getElementById('warning-badge');
+
+                // Warning & Defeat Check
+                if (curvature > 0.045) {
+                    if (state.speed > 0.0011) {
+                        warningBadge.classList.remove('hidden');
+                    } else {
+                        warningBadge.classList.add('hidden');
+                    }
+
+                    // DEFEAT CONDITION (Derailment on sharp curve)
+                    if (curvature > 0.055 && state.speed > 0.0013) {
+                        triggerDerailment();
+                    }
+                } else {
+                    warningBadge.classList.add('hidden');
+                }
+
+                // Camera Position relative to cart
+                const cameraOffset = new THREE.Vector3(0, 5, -11).applyQuaternion(cartGroup.quaternion);
+                camera.position.copy(cartGroup.position).add(cameraOffset);
+                camera.lookAt(cartGroup.position.clone().add(new THREE.Vector3(0, 2.2, 5).applyQuaternion(cartGroup.quaternion)));
+
+                // Coin Collection
+                coinsArray.forEach(c => {
+                    if (!c.collected && cartGroup.position.distanceTo(c.mesh.position) < 2.5) {
+                        c.collected = true;
+                        c.mesh.visible = false;
+                        state.coins += 5;
+                        document.getElementById('coin-display').innerText = state.coins;
+                    }
+                });
+
+                // Spin Coins
+                coinsArray.forEach(c => {
+                    if (!c.collected) c.mesh.rotation.z += 0.05;
+                });
+
+                // Update HUD Displays
+                document.getElementById('speed-display').innerText = Math.round(state.speed * 60000);
+                document.getElementById('progress-bar').style.width = `${state.progress * 100}%`;
+            } else if (state.isDerailing) {
+                // Derailment Physics Falling
+                cartGroup.position.y -= 0.35;
+                cartGroup.rotation.x += 0.12;
+                cartGroup.rotation.z += 0.12;
+
+                if (cartGroup.position.y < -60) {
+                    triggerGameOver(false);
+                }
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        // --- WIN / LOSS GAME OVER LOGIC ---
+        function startGame() {
+            state.progress = 0;
+            state.speed = 0;
+            state.timeElapsed = 0;
+            state.isPlaying = true;
+            state.isDerailing = false;
+
+            // Reset coins
+            coinsArray.forEach(c => {
+                c.collected = false;
+                c.mesh.visible = true;
+            });
+
+            // Reset position
+            const startPos = railCurve.getPointAt(0);
+            cartGroup.position.copy(startPos);
+            cartGroup.rotation.set(0, 0, 0);
+
+            // Hide Modals & Warnings
+            document.querySelectorAll('.modal').forEach(m => m.classList.add('hidden'));
+            document.getElementById('warning-badge').classList.add('hidden');
+
+            // Timer Loop
+            clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                if (state.isPlaying && !state.isDerailing) {
+                    state.timeElapsed++;
+                    const mins = String(Math.floor(state.timeElapsed / 60)).padStart(2, '0');
+                    const secs = String(state.timeElapsed % 60).padStart(2, '0');
+                    document.getElementById('timer-display').innerText = `${mins}:${secs}`;
+                }
+            }, 1000);
+        }
+
+        function triggerDerailment() {
+            state.isDerailing = true;
+        }
+
+        function triggerGameOver(isWin) {
+            state.isPlaying = false;
+            clearInterval(timerInterval);
+
+            const title = document.getElementById('gameover-title');
+            const desc = document.getElementById('gameover-desc');
+            const starsDisplay = document.getElementById('stars-display');
+
+            if (isWin) {
+                title.innerText = '🏆 ชนะแล้ว! (เข้าเส้นชัย)';
+                title.style.background = 'linear-gradient(90deg, #22c55e, #10b981)';
+                title.style.webkitBackgroundClip = 'text';
+                
+                // Rate performance with stars
+                let stars = '⭐';
+                if (state.timeElapsed < 75) stars = '⭐⭐⭐';
+                else if (state.timeElapsed < 110) stars = '⭐⭐';
+
+                starsDisplay.innerText = stars;
+                starsDisplay.classList.remove('hidden');
+
+                desc.innerText = 'ยินดีด้วย! คุณประคองรถรางผ่านสนามยาวพิเศษเข้าสู่เส้นชัยได้สำเร็จ!';
+            } else {
+                title.innerText = '💥 แพ้แล้ว! (ตกราง)';
+                title.style.background = 'linear-gradient(90deg, #ef4444, #f97316)';
+                title.style.webkitBackgroundClip = 'text';
+                
+                starsDisplay.classList.add('hidden');
+                desc.innerText = 'คุณใช้ความเร็วสูงเกินไปขณะเข้าโค้งหักศอก ทำให้รถรางเสียการควบคุมและตกราง!';
+            }
+
+            const mins = String(Math.floor(state.timeElapsed / 60)).padStart(2, '0');
+            const secs = String(state.timeElapsed % 60).padStart(2, '0');
+            document.getElementById('end-time').innerText = `${mins}:${secs}`;
+            document.getElementById('end-coins').innerText = state.coins;
+
+            document.getElementById('gameover-modal').classList.remove('hidden');
+        }
+
+        function showMainMenu() {
+            state.isPlaying = false;
+            document.querySelectorAll('.modal').forEach(m => m.classList.add('hidden'));
+            document.getElementById('menu-modal').classList.remove('hidden');
+        }
+
+        // --- SHOP CONTROLLER ---
+        function openShop() {
+            document.getElementById('shop-coins').innerText = state.coins;
+            const grid = document.getElementById('shop-grid');
+            grid.innerHTML = '';
+
+            SHOP_ITEMS.forEach(item => {
+                const div = document.createElement('div');
+                div.className = `shop-item ${state.selectedSkin === item.id ? 'selected' : ''}`;
+                
+                div.innerHTML = `
+                    <div class="shop-preview" style="background: #${item.cartColor.toString(16).padStart(6, '0')}">🛒</div>
+                    <div class="shop-item-name">${item.name}</div>
+                    <div class="shop-item-price">
+                        ${item.unlocked ? '✅ สวมใส่แล้ว' : `${item.price} 🪙`}
+                    </div>
+                `;
+
+                div.addEventListener('click', () => selectShopItem(item));
+                grid.appendChild(div);
+            });
+
+            document.getElementById('shop-modal').classList.remove('hidden');
+        }
+
+        function selectShopItem(item) {
+            if (item.unlocked) {
+                state.selectedSkin = item.id;
+                updatePlayerSkin();
+                openShop();
+            } else if (state.coins >= item.price) {
+                state.coins -= item.price;
+                item.unlocked = true;
+                state.selectedSkin = item.id;
+                document.getElementById('coin-display').innerText = state.coins;
+                updatePlayerSkin();
+                openShop();
+            } else {
+                alert('เหรียญของคุณไม่พอสำหรับการซื้อตัวละครนี้!');
+            }
+        }
+
+        function closeShop() {
+            document.getElementById('shop-modal').classList.add('hidden');
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        // Launch Game Engine
+        window.onload = () => {
+            initEngine();
+            setupControls();
+            animate();
+        };
+    </script>
+</body>
+</html>
